@@ -15,7 +15,7 @@ class InitialView extends StatefulWidget {
 }
 
 class _InitialViewState extends State<InitialView> {
-  String? _yearFilter; // ejemplo: '2025'
+  String? _yearFilter;
   bool _onlySpanish = false;
 
   @override
@@ -48,9 +48,8 @@ class _InitialViewState extends State<InitialView> {
           style: TextStyle(
             fontWeight: FontWeight.bold,
             letterSpacing: .5,
-            color: Colors.red
+            color: Colors.red,
           ),
-          
         ),
         elevation: 0,
       ),
@@ -69,143 +68,180 @@ class _InitialViewState extends State<InitialView> {
                 listener: (context, state) {
                   if (state is AddFavoriteSuccess) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Película añadida a favoritos')),
+                      const SnackBar(
+                        content: Text('Película añadida a favoritos'),
+                      ),
                     );
-                    movieBloc.add(UpdateMovieFavoriteStatus(movieId: state.addedMovieId, isFavorite: true));
+                    movieBloc.add(
+                      UpdateMovieFavoriteStatus(
+                        movieId: state.addedMovieId,
+                        isFavorite: true,
+                      ),
+                    );
                   }
                   if (state is RemoveFavoriteSuccess) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Película eliminada de favoritos')),
+                      const SnackBar(
+                        content: Text('Película eliminada de favoritos'),
+                      ),
                     );
-                    movieBloc.add(UpdateMovieFavoriteStatus(movieId: state.removedMovieId, isFavorite: false));
+                    movieBloc.add(
+                      UpdateMovieFavoriteStatus(
+                        movieId: state.removedMovieId,
+                        isFavorite: false,
+                      ),
+                    );
                   }
                 },
-              )
+              ),
             ],
             child: CustomScrollView(
-            physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-            slivers: [
-              SliverToBoxAdapter(
-                child: BlocBuilder<ConnectivityCubit, ConnectivityState>(
-                  builder: (context, state) {
-                    if (!state.isOnline) return const OfflineBanner();
-                    return const SizedBox.shrink();
-                  },
-                ),
+              physics: const BouncingScrollPhysics(
+                parent: AlwaysScrollableScrollPhysics(),
               ),
-              SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                sliver: SliverList(
-                  delegate: SliverChildListDelegate([
-                    _SectionBlock(
-                      title: 'Próximos estrenos',
-                      list: BlocBuilder<MovieBloc, MovieState>(
-                        builder: (context, state) {
-                          return SizedBox(
-                            height: 230,
-                            child: HorizontalMovieList(
-                              movies: state.upcomingMovies,
-                              isLoading: state.isLoadingUpcoming,
-                              hasMore: state.hasMoreUpcoming,
-                              error: state.errorUpcoming,
-                              onRetry: () => movieBloc.add(const LoadNextUpcomingPage()),
-                              onLoadMore: () => movieBloc.add(const LoadNextUpcomingPage()),
-                              onToggleFavorite: (movie) {
-                                final favBloc = context.read<FavoritesBloc>();
-                                if (movie.isFavorite) {
-                                  favBloc.add(RemoveFavorite(movieId: movie.id));
-                                } else {
-                                  favBloc.add(AddFavorite(movieId: movie.id));
-                                }
-                              },
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    _SectionBlock(
-                      title: 'Tendencia',
-                      list: BlocBuilder<MovieBloc, MovieState>(
-                        builder: (context, state) {
-                          return SizedBox(
-                            height: 230,
-                            child: HorizontalMovieList(
-                              movies: state.topRatedMovies, // reutilizamos top rated como "tendencia"
-                              isLoading: state.isLoadingTopRated,
-                              hasMore: state.hasMoreTopRated,
-                              error: state.errorTopRated,
-                              onRetry: () => movieBloc.add(const LoadNextTopRatedPage()),
-                              onLoadMore: () => movieBloc.add(const LoadNextTopRatedPage()),
-                              onToggleFavorite: (movie) {
-                                final favBloc = context.read<FavoritesBloc>();
-                                if (movie.isFavorite) {
-                                  favBloc.add(RemoveFavorite(movieId: movie.id));
-                                } else {
-                                  favBloc.add(AddFavorite(movieId: movie.id));
-                                }
-                              },
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'Recomendadas para ti',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    _buildFilters(theme),
-                    const SizedBox(height: 12),
-                  ]),
+              slivers: [
+                SliverToBoxAdapter(
+                  child: BlocBuilder<ConnectivityCubit, ConnectivityState>(
+                    builder: (context, state) {
+                      if (!state.isOnline) return const OfflineBanner();
+                      return const SizedBox.shrink();
+                    },
+                  ),
                 ),
-              ),
-              // Grid de recomendadas (usamos populares con filtros simulados)
-              SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                sliver: BlocBuilder<MovieBloc, MovieState>(
-                  builder: (context, state) {
-                    var movies = state.popularMovies.take(6).toList();
-                    // Filtros simples de ejemplo (no se hace otra petición, solo filtrado local)
-                    if (_onlySpanish) {
-                      movies = movies.where((m) => m.originalLanguage == 'es').toList();
-                    }
-                    if (_yearFilter != null) {
-                      movies = movies.where((m) => m.releaseDate.startsWith(_yearFilter!)).toList();
-                    }
-                    if (movies.isEmpty && state.isLoadingPopular) {
-                      return const SliverFillRemaining(
-                        child: Center(child: CircularProgressIndicator()),
-                      );
-                    }
-                    return SliverGrid(
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) {
-                          if (index == movies.length - 6 && state.hasMorePopular && !state.isLoadingPopular) {
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 8,
+                  ),
+                  sliver: SliverList(
+                    delegate: SliverChildListDelegate([
+                      _SectionBlock(
+                        title: 'Próximos estrenos',
+                        list: BlocBuilder<MovieBloc, MovieState>(
+                          builder: (context, state) {
+                            return SizedBox(
+                              height: 230,
+                              child: HorizontalMovieList(
+                                movies: state.upcomingMovies.take(6).toList(),
+                                isLoading: state.isLoadingUpcoming,
+                                hasMore: state.hasMoreUpcoming,
+                                error: state.errorUpcoming,
+                                onRetry: () =>
+                                    movieBloc.add(const LoadNextUpcomingPage()),
+                                onLoadMore: () =>
+                                    movieBloc.add(const LoadNextUpcomingPage()),
+                                onToggleFavorite: (movie) {
+                                  final favBloc = context.read<FavoritesBloc>();
+                                  if (movie.isFavorite) {
+                                    favBloc.add(
+                                      RemoveFavorite(movieId: movie.id),
+                                    );
+                                  } else {
+                                    favBloc.add(AddFavorite(movieId: movie.id));
+                                  }
+                                },
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      _SectionBlock(
+                        title: 'Tendencia',
+                        list: BlocBuilder<MovieBloc, MovieState>(
+                          builder: (context, state) {
+                            return SizedBox(
+                              height: 230,
+                              child: HorizontalMovieList(
+                                movies: state
+                                    .topRatedMovies, // reutilizamos top rated como "tendencia"
+                                isLoading: state.isLoadingTopRated,
+                                hasMore: state.hasMoreTopRated,
+                                error: state.errorTopRated,
+                                onRetry: () =>
+                                    movieBloc.add(const LoadNextTopRatedPage()),
+                                onLoadMore: () =>
+                                    movieBloc.add(const LoadNextTopRatedPage()),
+                                onToggleFavorite: (movie) {
+                                  final favBloc = context.read<FavoritesBloc>();
+                                  if (movie.isFavorite) {
+                                    favBloc.add(
+                                      RemoveFavorite(movieId: movie.id),
+                                    );
+                                  } else {
+                                    favBloc.add(AddFavorite(movieId: movie.id));
+                                  }
+                                },
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Recomendadas para ti',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      _buildFilters(theme),
+                      const SizedBox(height: 12),
+                    ]),
+                  ),
+                ),
+                // Grid de recomendadas (usamos populares con filtros simulados)
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  sliver: BlocBuilder<MovieBloc, MovieState>(
+                    builder: (context, state) {
+                      var movies = state.popularMovies.toList();
+                      // Filtros simples de ejemplo (no se hace otra petición, solo filtrado local)
+                      if (_onlySpanish) {
+                        movies = movies
+                            .where((m) => m.originalLanguage == 'es')
+                            .toList();
+                      }
+                      if (_yearFilter != null) {
+                        movies = movies
+                            .where(
+                              (m) => m.releaseDate.startsWith(_yearFilter!),
+                            )
+                            .toList();
+                      }
+                      if (movies.isEmpty && state.isLoadingPopular) {
+                        return const SliverFillRemaining(
+                          child: Center(child: CircularProgressIndicator()),
+                        );
+                      }
+                      return SliverGrid(
+                        delegate: SliverChildBuilderDelegate((context, index) {
+                          if (index == movies.length - 6 &&
+                              state.hasMorePopular &&
+                              !state.isLoadingPopular) {
                             movieBloc.add(const LoadNextPopularPage());
                           }
                           final movie = movies[index];
                           final favoritesBloc = context.read<FavoritesBloc>();
-                          return SimplePosterCard(movie: movie, favoritesBloc: favoritesBloc);
-                        },
-                        childCount: movies.length,
-                      ),
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 16,
-                        mainAxisSpacing: 22,
-                        childAspectRatio: .6,
-                      ),
-                    );
-                  },
+                          return SimplePosterCard(
+                            movie: movie,
+                            favoritesBloc: favoritesBloc,
+                          );
+                        }, childCount: movies.length),
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              crossAxisSpacing: 16,
+                              mainAxisSpacing: 22,
+                              childAspectRatio: .6,
+                            ),
+                      );
+                    },
+                  ),
                 ),
-              )
-            ],
-          ),
+              ],
+            ),
           ),
         ),
       ),
@@ -213,7 +249,9 @@ class _InitialViewState extends State<InitialView> {
   }
 
   Widget _buildFilters(ThemeData theme) {
-    final chipStyle = theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w500);
+    final chipStyle = theme.textTheme.labelLarge?.copyWith(
+      fontWeight: FontWeight.w500,
+    );
     return Wrap(
       spacing: 10,
       runSpacing: 8,
@@ -225,16 +263,56 @@ class _InitialViewState extends State<InitialView> {
           selectedColor: Colors.white,
           backgroundColor: Colors.white10,
           checkmarkColor: Colors.black,
-          labelStyle: TextStyle(color: _onlySpanish ? Colors.black : Colors.white),
+          labelStyle: TextStyle(
+            color: _onlySpanish ? Colors.black : Colors.white,
+          ),
         ),
         FilterChip(
-          selected: _yearFilter == '2024',
-          label: Text('Lanzadas en 2024', style: chipStyle),
-          onSelected: (val) => setState(() => _yearFilter = val ? '2024' : null),
+          selected: _yearFilter == DateTime.now().year.toString(),
+          label: Text(DateTime.now().year.toString(), style: chipStyle),
+          onSelected: (val) => setState(
+            () => _yearFilter = val ? DateTime.now().year.toString() : null,
+          ),
           selectedColor: Colors.white,
           backgroundColor: Colors.white10,
           checkmarkColor: Colors.black,
-          labelStyle: TextStyle(color: _yearFilter == '2024' ? Colors.black : Colors.white),
+          labelStyle: TextStyle(
+            color: _yearFilter == DateTime.now().year.toString()
+                ? Colors.black
+                : Colors.white,
+          ),
+        ),
+        FilterChip(
+          selected: _yearFilter == (DateTime.now().year - 1).toString(),
+          label: Text((DateTime.now().year - 1).toString(), style: chipStyle),
+          onSelected: (val) => setState(
+            () =>
+                _yearFilter = val ? (DateTime.now().year - 1).toString() : null,
+          ),
+          selectedColor: Colors.white,
+          backgroundColor: Colors.white10,
+          checkmarkColor: Colors.black,
+          labelStyle: TextStyle(
+            color: _yearFilter == (DateTime.now().year - 1).toString()
+                ? Colors.black
+                : Colors.white,
+          ),
+        ),
+        FilterChip(
+          selected: _yearFilter == (DateTime.now().year - 2).toString(),
+          label: Text((DateTime.now().year - 2).toString(), style: chipStyle),
+          onSelected: (val) => setState(
+            () =>
+                _yearFilter = val ? (DateTime.now().year - 2).toString() : null,
+          ),
+          selectedColor: Colors.white,
+          backgroundColor: Colors.white10,
+          checkmarkColor: Colors.black,
+          labelStyle: TextStyle(
+            color: _yearFilter == (DateTime.now().year - 2).toString()
+                ? Colors.black
+                : Colors.white,
+          ),
         ),
       ],
     );
@@ -254,9 +332,9 @@ class _SectionBlock extends StatelessWidget {
         Text(
           title,
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
         ),
         const SizedBox(height: 12),
         list,
